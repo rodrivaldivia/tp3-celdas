@@ -9,9 +9,17 @@ import math
 import numpy as np
 from pprint import pprint
 
+from ReplayMemory import ReplayMemory
+from Experience import Experience
+
+
+MEMORY_CAPACITY = 10
+
+
 class Agent(AbstractPlayer):
     def __init__(self):
         AbstractPlayer.__init__(self)
+        self.replayMemory = ReplayMemory(MEMORY_CAPACITY)
        
 
     """
@@ -22,7 +30,8 @@ class Agent(AbstractPlayer):
     """
 
     def init(self, sso, elapsedTimer):    
-        pass
+        self.lastState = None
+        self.lastAction = None
 
     """
      * Method used to determine the next move to be performed by the agent.
@@ -35,15 +44,24 @@ class Agent(AbstractPlayer):
      * @return The action to be performed by the agent.
      """
 
-    def act(self, sso, elapsedTimer):    	
+    def act(self, sso, elapsedTimer):
+
+        # Hardcodded for now
+
+        if self.lastState is not None:
+            reward = 0 # get reward
+            self.replayMemory.pushExperience(Experience(self.lastState, self.lastAction, reward, sso))
         
         # pprint(vars(sso))
         print(self.get_perception(sso))
+
+        self.lastState = sso
 
         if sso.gameTick == 1000:
             return "ACTION_ESCAPE"
         else:
             index = random.randint(0, len(sso.availableActions) - 1)
+            self.lastAction = index
             return sso.availableActions[index]
 
     """
