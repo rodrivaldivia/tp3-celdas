@@ -44,13 +44,14 @@ class Agent(AbstractPlayer):
         self.lastState = None
         self.lastAction = None
         networkOptions = [
-            keras.layers.Dense(24, input_dim=117, activation='relu'),
-            keras.layers.Dense(32, activation='softmax'),
+            # keras.layers.InputLayer(24, input_dim=117, activation='relu'),
+            keras.layers.InputLayer(input_shape=(13,9), dtype=tf.dtypes.as_dtype(tf.string) ),
+            keras.layers.Dense(32, activation='softmax', kernel_initializer='random_uniform'),
             keras.layers.Dense(NUM_ACTIONS)
         ]
 
-        # self.policyNetwork = keras.Sequential(networkOptions)
-        # self.targetNetwork = keras.Sequential(networkOptions)
+        self.policyNetwork = keras.Sequential(networkOptions)
+        self.targetNetwork = keras.Sequential(networkOptions)
 
     """
      * Method used to determine the next move to be performed by the agent.
@@ -65,14 +66,15 @@ class Agent(AbstractPlayer):
 
     def act(self, sso, elapsedTimer):
 
-        # Hardcodded for now
+        currentPosition = self.getAvatarCoordinates(sso)
 
         if self.lastState is not None:
-            reward = 0 # get reward
+            reward = self.getReward(self.lastState, currentPosition)
+            # print(reward)
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastAction, reward, sso))
-        
+            self.train()
         # pprint(vars(sso))
-        print(self.get_perception(sso))
+        # print(self.get_perception(sso))
 
 
 
@@ -84,6 +86,21 @@ class Agent(AbstractPlayer):
             index = random.randint(0, len(sso.availableActions) - 1)
             self.lastAction = index
             return sso.availableActions[index]
+
+    def train(self):
+        batch = self.replayMemory.sample(BATCH_SIZE)
+        if len(batch) < BATCH_SIZE:
+            return
+
+        flatStates = [self.get_perception(sample.state) for sample in batch]
+        tensorStates = tf.convert_to_tensor(flatStates, dtype=tf.string)
+
+        # predict Q(s,a) given the batch of states
+        predicted_q = self.policyNetwork(tensorStates)
+        target_q = predicted_q.numpy()
+        print target_q
+        batch_idxs = np.arange(BATCH_SIZE) # [0, 1, ...BATCH_SIZE]
+
 
     """
     * Method used to perform actions in case of a game end.
@@ -99,7 +116,51 @@ class Agent(AbstractPlayer):
     """
 
     def result(self, sso, elapsedTimer):
+        print("GAME OVER")
+        self.gameOver = True
+        if self.lastAction is not None:
+            reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso))
+            if not sso.isAvatarAlive:
+                reward = -500.0
+                print ('Murio')
+            self.replayMemory.pushExperience(Experience(self.lastState, self.lastAction, reward, sso))
         return random.randint(0, 2)
+
+
+    def getAvatarCoordinates(self, state):
+        position = state.avatarPosition
+        return [int(position[1]/10), int(position[0]/10)]
+
+    def getReward(self, lastState, currentPosition):
+        level = self.get_perception(lastState)
+        col = currentPosition[0] # col
+        row = currentPosition[1] # row
+        reward = 0
+        if level[col][row] == 'A':
+            # Did not move
+            # TODO add killed enemy reward
+            # print ('Agent')
+            reward = -1.0
+        elif level[col][row] == 'L':
+            # Found key
+            print ('Found key')
+            self.foundKey = True
+            reward = 100.0
+        elif level[col][row] == 'S' and self.foundKey:
+            # Won
+            reward = 500.0
+        # elif level[col][row] == 'e':
+        #     # Died
+        #     print ('Died')
+        #     reward = -50.0
+        else:
+            print ('No entro a nignuno')
+            print level[col][row]
+
+        # print 'level: '
+        # print level[col][row]
+        # print reward
+        return reward
 
     def get_perception(self, sso):
         sizeWorldWidthInPixels= sso.worldDimension[0]
