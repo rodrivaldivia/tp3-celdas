@@ -1,15 +1,10 @@
 [GAME] Game idx:90 game name zelda
 [PHASE] Starting First Phase of Training in 3 levels.
-[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:5.0, timesteps:696
-[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:27
-[TRAINING] Result (1->win; 0->lose): level:2, Player0:-1, Player0-Score:2.0, timesteps:747
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:156
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:108
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:460
 [PHASE] Starting Second Phase of Training in 3 levels.
-[TRAINING] Result (1->win; 0->lose): level:1, Player0:-1, Player0-Score:0.0, timesteps:20
-[TRAINING] Result (1->win; 0->lose): level:0, Player0:-1, Player0-Score:0.0, timesteps:91
-[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:40
-[TRAINING] Result (1->win; 0->lose): level:1, Player0:-1, Player0-Score:0.0, timesteps:26
-[TRAINING] Result (1->win; 0->lose): level:2, Player0:-1, Player0-Score:0.0, timesteps:21
-[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:172
-[TRAINING] Result (1->win; 0->lose): level:1, Player0:-1, Player0-Score:0.0, timesteps:55
-[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:36
-[TRAINING] Result (1->win; 0->lose): level:2, Player0:-1, Player0-Score:0.0, timesteps:39
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:1.0, timesteps:446
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:288
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:3.0, timesteps:301
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:525

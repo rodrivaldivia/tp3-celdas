@@ -1,19 +1,30 @@
 import random
+import os
+import datetime as dt
 
 from AbstractPlayer import AbstractPlayer
 from Types import *
+
+from EpsilonStrategy import EpsilonStrategy
+from ReplayMemory import ReplayMemory
+from Experience import Experience
 
 from utils.Types import LEARNING_SSO_TYPE
 from utils.SerializableStateObservation import Observation
 import math
 import numpy as np
 from pprint import pprint
+import tensorflow as tf
+from tensorflow import keras
 
-from ReplayMemory import ReplayMemory
-from Experience import Experience
+tf.compat.v1.enable_v2_behavior()
 
 
-MEMORY_CAPACITY = 10
+MEMORY_CAPACITY = 10000
+NUM_ACTIONS = 5
+BATCH_SIZE = 6
+GAMMA = 0.95
+TAU = 0.08
 
 
 class Agent(AbstractPlayer):
@@ -32,6 +43,14 @@ class Agent(AbstractPlayer):
     def init(self, sso, elapsedTimer):    
         self.lastState = None
         self.lastAction = None
+        networkOptions = [
+            keras.layers.Dense(24, input_dim=117, activation='relu'),
+            keras.layers.Dense(32, activation='softmax'),
+            keras.layers.Dense(NUM_ACTIONS)
+        ]
+
+        # self.policyNetwork = keras.Sequential(networkOptions)
+        # self.targetNetwork = keras.Sequential(networkOptions)
 
     """
      * Method used to determine the next move to be performed by the agent.
@@ -54,6 +73,8 @@ class Agent(AbstractPlayer):
         
         # pprint(vars(sso))
         print(self.get_perception(sso))
+
+
 
         self.lastState = sso
 
