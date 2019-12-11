@@ -22,9 +22,18 @@ tf.compat.v1.enable_v2_behavior()
 
 MEMORY_CAPACITY = 10000
 NUM_ACTIONS = 5
-BATCH_SIZE = 6
+BATCH_SIZE = 1
 GAMMA = 0.95
 TAU = 0.08
+
+elementToFloat = {
+    'w': 1.0,
+    'A': 2.0,
+    'S': 3.0,
+    'L': 4.0,
+    'e': 5.0,
+    'x': 6.0,
+}
 
 
 class Agent(AbstractPlayer):
@@ -45,7 +54,7 @@ class Agent(AbstractPlayer):
         self.lastAction = None
         networkOptions = [
             # keras.layers.InputLayer(24, input_dim=117, activation='relu'),
-            keras.layers.InputLayer(input_shape=(13,9), dtype=tf.dtypes.as_dtype(tf.string) ),
+            keras.layers.InputLayer(input_shape=(9,13), ),
             keras.layers.Dense(32, activation='softmax', kernel_initializer='random_uniform'),
             keras.layers.Dense(NUM_ACTIONS)
         ]
@@ -91,9 +100,15 @@ class Agent(AbstractPlayer):
         batch = self.replayMemory.sample(BATCH_SIZE)
         if len(batch) < BATCH_SIZE:
             return
+        
 
+
+        # flatStates = [self.get_perception(sample.state).astype(dtype=np.float) for sample in batch]
         flatStates = [self.get_perception(sample.state) for sample in batch]
-        tensorStates = tf.convert_to_tensor(flatStates, dtype=tf.string)
+        # flatState = self.get_perception(batch[0].state)
+        print (flatStates)
+        # tensorStates = tf.cast(flatStates, tf.float32)
+        tensorStates = tf.convert_to_tensor(flatStates)
 
         # predict Q(s,a) given the batch of states
         predicted_q = self.policyNetwork(tensorStates)
@@ -162,6 +177,7 @@ class Agent(AbstractPlayer):
         # print reward
         return reward
 
+
     def get_perception(self, sso):
         sizeWorldWidthInPixels= sso.worldDimension[0]
         sizeWorldHeightInPixels= sso.worldDimension[1];
@@ -170,8 +186,9 @@ class Agent(AbstractPlayer):
         
         spriteSizeWidthInPixels =  sizeWorldWidthInPixels / levelWidth;
         spriteSizeHeightInPixels =  sizeWorldHeightInPixels/ levelHeight;
-        level = np.chararray((levelHeight, levelWidth))
-        level[:] = '.'
+        level = np.ndarray((levelHeight, levelWidth))
+        level[:] = 0.0
+        # level[:] = '.'
         avatar_observation = Observation()
         for ii in range(levelWidth):                    
             for jj in range(levelHeight):
@@ -179,10 +196,11 @@ class Agent(AbstractPlayer):
                 if len(listObservation) != 0:
                     aux = listObservation[len(listObservation)-1]
                     if aux is None: continue
-                    level[jj][ii] = self.detectElement(aux)
+                    level[jj][ii] = elementToFloat[self.detectElement(aux)]
     
 
         return level
+
 
     def detectElement(self, o):
         if o.category == 4:
