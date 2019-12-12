@@ -14,16 +14,19 @@ from utils.SerializableStateObservation import Observation
 import math
 import numpy as np
 from pprint import pprint
+
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras import Model, Sequential
+from tensorflow.keras.layers import Dense, InputLayer, Input, Reshape
 
 tf.compat.v1.enable_v2_behavior()
 
 
 MEMORY_CAPACITY = 10000
 NUM_ACTIONS = 5
-BATCH_SIZE = 1
-GAMMA = 0.95
+BATCH_SIZE = 30
+GAMMA = 0.6
 TAU = 0.08
 
 elementToFloat = {
@@ -52,15 +55,42 @@ class Agent(AbstractPlayer):
     def init(self, sso, elapsedTimer):    
         self.lastState = None
         self.lastAction = None
-        networkOptions = [
-            # keras.layers.InputLayer(24, input_dim=117, activation='relu'),
-            keras.layers.InputLayer(input_shape=(9,13), ),
-            keras.layers.Dense(32, activation='softmax', kernel_initializer='random_uniform'),
-            keras.layers.Dense(NUM_ACTIONS)
-        ]
+        # networkOptions = [
+        #     # keras.layers.InputLayer(24, input_dim=117, activation='relu'),
+        #     keras.layers.InputLayer(input_shape=(9,13), ),
+        #     keras.layers.Dense(32, activation='softmax', kernel_initializer='random_uniform'),
+        #     keras.layers.Dense(NUM_ACTIONS)
+        # ]
 
-        self.policyNetwork = keras.Sequential(networkOptions)
-        self.targetNetwork = keras.Sequential(networkOptions)
+        # self.policyNetwork = keras.Sequential(networkOptions)
+        # self.targetNetwork = keras.Sequential(networkOptions)
+        self.policyNetwork = self._build_compile_model()
+        self.targetNetwork = self._build_compile_model()
+        print(self.policyNetwork.summary())
+        self.align_target_model()
+
+    def _build_compile_model(self):
+        # model = Sequential()
+        # model.add(InputLayer(input_shape=(9,13)))
+        # model.add(InputLayer(input_shape=(9,13), name='state'))
+        # model.add(Input(shape=[9,13]),)
+        # model.add(Dense(100, activation='relu', name='hiddenI'))
+        # model.add(Dense(50, activation='relu', name='hiddenII'))
+        # model.add(Dense(NUM_ACTIONS, activation='linear', name='actions'))
+        
+        inputs = Input(shape=(9,13), name='state')
+        x = Dense(64, activation='relu')(inputs)
+        x = Dense(64, activation='relu')(x)
+        outputs = Dense(10, activation='softmax')(x)
+
+        model = Model(inputs=inputs, outputs=outputs, name='Zelda')
+
+        model.compile(loss='mse') #, optimizer=self._optimizer)
+        return model
+
+    def align_target_model(self):
+        self.targetNetwork.set_weights(self.policyNetwork.get_weights())
+   
 
     """
      * Method used to determine the next move to be performed by the agent.
@@ -85,9 +115,10 @@ class Agent(AbstractPlayer):
         # pprint(vars(sso))
         # print(self.get_perception(sso))
 
-
-
         self.lastState = sso
+
+        # q_values = self.policyNetwork.predict(currentState)
+        # return np.argmax(q_values[0])
 
         if sso.gameTick == 1000:
             return "ACTION_ESCAPE"
@@ -99,22 +130,35 @@ class Agent(AbstractPlayer):
     def train(self):
         batch = self.replayMemory.sample(BATCH_SIZE)
         if len(batch) < BATCH_SIZE:
-            return
-        
+            return        
+
+        for experience in batch:
+
+            tensorState = tf.convert_to_tensor([self.get_perception(experience.state)])
+            tensorNextState = tf.convert_to_tensor([self.get_perception(experience.nextState)])
+
+            # Intentamos predecir la mejor accion
+            target = self.policyNetwork.predict(tensorState)
+
+            t = self.targetNetwork.predict(tensorNextState)
+            # Para la accion que hicimos corregimos el Q-Value
+            target[0][experience.action] = experience.reward + GAMMA * np.amax(t)
+
+            # Entrenamos con la prediccion vs la correccion
+            self.policyNetwork.fit(tensorState, target, epochs=1, verbose=0)
+
+        print('done training')
 
 
-        # flatStates = [self.get_perception(sample.state).astype(dtype=np.float) for sample in batch]
-        flatStates = [self.get_perception(sample.state) for sample in batch]
-        # flatState = self.get_perception(batch[0].state)
-        print (flatStates)
-        # tensorStates = tf.cast(flatStates, tf.float32)
-        tensorStates = tf.convert_to_tensor(flatStates)
-
-        # predict Q(s,a) given the batch of states
-        predicted_q = self.policyNetwork(tensorStates)
-        target_q = predicted_q.numpy()
-        print target_q
-        batch_idxs = np.arange(BATCH_SIZE) # [0, 1, ...BATCH_SIZE]
+        # flatStates = [self.get_perception(sample.state) for sample in batch]
+        # # print (flatStates)
+        # tensorStates = tf.convert_to_tensor(flatStates)
+        # # predict Q(s,a) given the batch of states
+        # predicted_q = self.policyNetwork(tensorStates)
+        # loss = self.policyNetwork.train_on_batch(tensorStates)
+        # target_q = predicted_q.numpy()
+        # # print target_q
+        # batch_idxs = np.arange(BATCH_SIZE) # [0, 1, ...BATCH_SIZE]
 
 
     """
