@@ -1,2 +1,59 @@
 [GAME] Game idx:90 game name zelda
 [PHASE] Starting First Phase of Training in 3 levels.
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:-1, Player0-Score:0.0, timesteps:200
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:-1, Player0-Score:0.0, timesteps:200
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:112
+[PHASE] Starting Second Phase of Training in 3 levels.
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:46
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:154
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:168
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:105
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:260
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:96
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:280
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:352
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:1400
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:48
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:356
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:116
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:48
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:142
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:672
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:716
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:60
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:546
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:492
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:182
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:350
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:108
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:3.0, timesteps:1576
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:806
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:780
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:189
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:60
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:104
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:766
+[PHASE] Starting Validation in 2 levels.
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:1.0, timesteps:234
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:-1.0, timesteps:418
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:-1.0, timesteps:40
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:-1.0, timesteps:238
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:-1.0, timesteps:167
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:1.0, timesteps:457
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:-1.0, timesteps:28
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:-1.0, timesteps:24
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:-1.0, timesteps:12
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:3.0, timesteps:954
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:3.0, timesteps:312
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:-1.0, timesteps:166
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:5.0, timesteps:1579
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:4.0, timesteps:2000
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:1.0, timesteps:116
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:-1.0, timesteps:138
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:3.0, timesteps:50
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:1.0, timesteps:290
+[VALIDATION] Result (1->win; 0->lose): level:3, Player0:0, Player0-Score:-1.0, timesteps:44
+[VALIDATION] Result (1->win; 0->lose): level:4, Player0:0, Player0-Score:-1.0, timesteps:588
+[PHASE] End Validation in 2 levels.
+
+ 	 --> Real execution time: 8 minutes, 56 seconds of wall time.

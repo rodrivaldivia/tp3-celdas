@@ -18,12 +18,13 @@ from pprint import pprint
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import Model, Sequential
-from tensorflow.keras.layers import Dense, InputLayer, Input, Reshape
+from tensorflow.keras.layers import Dense, Input, Reshape, Flatten
 
 tf.compat.v1.enable_v2_behavior()
 
 
 MEMORY_CAPACITY = 10000
+TIMESTEPS_PER_EPISODE = 50
 NUM_ACTIONS = 5
 BATCH_SIZE = 30
 GAMMA = 0.6
@@ -42,8 +43,9 @@ elementToFloat = {
 class Agent(AbstractPlayer):
     def __init__(self):
         AbstractPlayer.__init__(self)
+        self.movementStrategy = EpsilonStrategy()
         self.replayMemory = ReplayMemory(MEMORY_CAPACITY)
-       
+
 
     """
     * Public method to be called at the start of every level of a game.
@@ -53,8 +55,10 @@ class Agent(AbstractPlayer):
     """
 
     def init(self, sso, elapsedTimer):    
+        print(sso.availableActions)
         self.lastState = None
         self.lastAction = None
+        self.timestep = 0
         # networkOptions = [
         #     # keras.layers.InputLayer(24, input_dim=117, activation='relu'),
         #     keras.layers.InputLayer(input_shape=(9,13), ),
@@ -79,13 +83,14 @@ class Agent(AbstractPlayer):
         # model.add(Dense(NUM_ACTIONS, activation='linear', name='actions'))
         
         inputs = Input(shape=(9,13), name='state')
-        x = Dense(64, activation='relu')(inputs)
-        x = Dense(64, activation='relu')(x)
-        outputs = Dense(10, activation='softmax')(x)
+        x = Flatten()(inputs)
+        x = Dense(128, activation='relu')(x)
+        # x = Dense(64, activation='relu')(x)
+        outputs = Dense(NUM_ACTIONS, activation='softmax')(x)
 
         model = Model(inputs=inputs, outputs=outputs, name='Zelda')
 
-        model.compile(loss='mse') #, optimizer=self._optimizer)
+        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(learning_rate=0.01))
         return model
 
     def align_target_model(self):
@@ -105,27 +110,43 @@ class Agent(AbstractPlayer):
 
     def act(self, sso, elapsedTimer):
 
+        self.timestep += 1
+
+        if sso.gameTick % TIMESTEPS_PER_EPISODE == 0:
+            self.train()
+            self.align_target_model()
+
+
         currentPosition = self.getAvatarCoordinates(sso)
 
         if self.lastState is not None:
-            reward = self.getReward(self.lastState, currentPosition)
+            reward = self.getReward(self.lastState, sso, currentPosition)
             # print(reward)
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastAction, reward, sso))
-            self.train()
+        
         # pprint(vars(sso))
         # print(self.get_perception(sso))
 
         self.lastState = sso
 
-        # q_values = self.policyNetwork.predict(currentState)
-        # return np.argmax(q_values[0])
 
-        if sso.gameTick == 1000:
-            return "ACTION_ESCAPE"
+        tensorState = tf.convert_to_tensor([self.get_perception(sso)])
+
+        if self.movementStrategy.shouldExploit():
+            # print('Using strategy...')
+            q_values = self.policyNetwork.predict(tensorState)
+            print('q_values: ', q_values)
+            print('Predicted Best: ', sso.availableActions[np.argmax(q_values[0])])
+            return sso.availableActions[np.argmax(q_values[0])]
         else:
-            index = random.randint(0, len(sso.availableActions) - 1)
-            self.lastAction = index
-            return sso.availableActions[index]
+            # print('Exploring...')
+            if sso.gameTick == 1000:
+                return "ACTION_ESCAPE"
+            else:
+                index = random.randint(0, len(sso.availableActions) - 1)
+                self.lastAction = index
+                print('Exploring: ', sso.availableActions[index])
+                return sso.availableActions[index]
 
     def train(self):
         batch = self.replayMemory.sample(BATCH_SIZE)
@@ -177,12 +198,16 @@ class Agent(AbstractPlayer):
     def result(self, sso, elapsedTimer):
         print("GAME OVER")
         self.gameOver = True
+        self.foundKey = False
         if self.lastAction is not None:
-            reward = self.getReward(self.lastState, self.getAvatarCoordinates(sso))
+            reward = self.getReward(self.lastState, sso, self.getAvatarCoordinates(sso))
             if not sso.isAvatarAlive:
-                reward = -500.0
+                reward = -5000.0
                 print ('Murio')
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastAction, reward, sso))
+            self.train()
+        return 0
+        # Two different levels
         return random.randint(0, 2)
 
 
@@ -190,28 +215,34 @@ class Agent(AbstractPlayer):
         position = state.avatarPosition
         return [int(position[1]/10), int(position[0]/10)]
 
-    def getReward(self, lastState, currentPosition):
+    def getReward(self, lastState, currentState, currentPosition):
         level = self.get_perception(lastState)
         col = currentPosition[0] # col
         row = currentPosition[1] # row
         reward = 0
-        if level[col][row] == 'A':
+
+        # VALIDAR QUE NO AtaQUE Y SI NO SE MUEVE TABLA
+
+        if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
+            print('KILLED AN ENEMY')
+            return 500.0
+
+        if level[col][row] == elementToFloat['A']:
             # Did not move
             # TODO add killed enemy reward
-            # print ('Agent')
-            reward = -1.0
-        elif level[col][row] == 'L':
+            print ('AGENT DID NOT MOVE')
+            reward = -50.0
+            if self.lastAction and currentState.availableActions[self.lastAction] == 'ACTION_USE':
+                print('BUT DID ATTACK')
+                reward = -2.0
+        elif level[col][row] == elementToFloat['L']:
             # Found key
-            print ('Found key')
+            print ('FOUND KEY')
             self.foundKey = True
-            reward = 100.0
-        elif level[col][row] == 'S' and self.foundKey:
+            reward = 1000.0
+        elif level[col][row] == elementToFloat['S'] and self.foundKey:
             # Won
-            reward = 500.0
-        # elif level[col][row] == 'e':
-        #     # Died
-        #     print ('Died')
-        #     reward = -50.0
+            reward = 5000.0
         else:
             print ('No entro a nignuno')
             print level[col][row]
