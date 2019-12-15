@@ -2,7 +2,7 @@
 
 game_id=90
 server_dir=../../..
-agent_name=ercumentilhan.Agent
+agent_name=celdas.Agent
 sh_dir=utils
 
 

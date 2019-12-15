@@ -14,6 +14,7 @@ from utils.SerializableStateObservation import Observation
 import math
 import numpy as np
 from pprint import pprint
+from scipy.spatial import distance
 
 import tensorflow as tf
 from tensorflow import keras
@@ -22,8 +23,10 @@ from tensorflow.keras.layers import Dense, Input, Reshape, Flatten
 
 tf.compat.v1.enable_v2_behavior()
 
+# tf.reset_default_graph()
 
-MEMORY_CAPACITY = 10000
+
+MEMORY_CAPACITY = 100
 TIMESTEPS_PER_EPISODE = 50
 NUM_ACTIONS = 5
 BATCH_SIZE = 30
@@ -31,6 +34,7 @@ GAMMA = 0.6
 TAU = 0.08
 
 elementToFloat = {
+    '.': 0.0,
     'w': 1.0,
     'A': 2.0,
     'S': 3.0,
@@ -45,6 +49,12 @@ class Agent(AbstractPlayer):
         AbstractPlayer.__init__(self)
         self.movementStrategy = EpsilonStrategy()
         self.replayMemory = ReplayMemory(MEMORY_CAPACITY)
+        self.episode = 0
+        self.policyNetwork = self._build_compile_model()
+        self.targetNetwork = self._build_compile_model()
+        if self.episode == 0 and os.path.exists("./celdas/network/zelda.index"):
+            self.policyNetwork.load_weights("./celdas/network/zelda")
+        print(self.policyNetwork.summary())
 
 
     """
@@ -59,38 +69,28 @@ class Agent(AbstractPlayer):
         self.lastState = None
         self.lastAction = None
         self.timestep = 0
-        # networkOptions = [
-        #     # keras.layers.InputLayer(24, input_dim=117, activation='relu'),
-        #     keras.layers.InputLayer(input_shape=(9,13), ),
-        #     keras.layers.Dense(32, activation='softmax', kernel_initializer='random_uniform'),
-        #     keras.layers.Dense(NUM_ACTIONS)
-        # ]
-
-        # self.policyNetwork = keras.Sequential(networkOptions)
-        # self.targetNetwork = keras.Sequential(networkOptions)
-        self.policyNetwork = self._build_compile_model()
-        self.targetNetwork = self._build_compile_model()
-        print(self.policyNetwork.summary())
         self.align_target_model()
+        self.foundKey = False
+        # Set KEY as goal
+        print(self.get_perception(sso))
+        self.goalPosition = None
+        for observations in sso.immovablePositions:
+            if observations[0].itype == 4:
+                self.goalPosition = observations[0].getPositionAsArray()
+        # self.goalPosition = sso.immovablePositions[0][0].getPositionAsArray()
+        print(self.goalPosition)
+
 
     def _build_compile_model(self):
-        # model = Sequential()
-        # model.add(InputLayer(input_shape=(9,13)))
-        # model.add(InputLayer(input_shape=(9,13), name='state'))
-        # model.add(Input(shape=[9,13]),)
-        # model.add(Dense(100, activation='relu', name='hiddenI'))
-        # model.add(Dense(50, activation='relu', name='hiddenII'))
-        # model.add(Dense(NUM_ACTIONS, activation='linear', name='actions'))
-        
         inputs = Input(shape=(9,13), name='state')
         x = Flatten()(inputs)
         x = Dense(128, activation='relu')(x)
-        # x = Dense(64, activation='relu')(x)
-        outputs = Dense(NUM_ACTIONS, activation='softmax')(x)
+        x = Dense(64, activation='softmax')(x)
+        outputs = Dense(NUM_ACTIONS, activation='linear')(x)
 
         model = Model(inputs=inputs, outputs=outputs, name='Zelda')
 
-        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(learning_rate=0.01))
+        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(learning_rate=0.005))
         return model
 
     def align_target_model(self):
@@ -140,7 +140,7 @@ class Agent(AbstractPlayer):
             return sso.availableActions[np.argmax(q_values[0])]
         else:
             # print('Exploring...')
-            if sso.gameTick == 1000:
+            if sso.gameTick == 3000:
                 return "ACTION_ESCAPE"
             else:
                 index = random.randint(0, len(sso.availableActions) - 1)
@@ -198,17 +198,21 @@ class Agent(AbstractPlayer):
     def result(self, sso, elapsedTimer):
         print("GAME OVER")
         self.gameOver = True
-        self.foundKey = False
+        self.episode += 1
+        self.policyNetwork.save_weights("./celdas/network/zelda")
+        print('Model saved!')
         if self.lastAction is not None:
             reward = self.getReward(self.lastState, sso, self.getAvatarCoordinates(sso))
             if not sso.isAvatarAlive:
                 reward = -5000.0
-                print ('Murio')
+                print ('AGENT KIA')
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastAction, reward, sso))
             self.train()
-        return 0
         # Two different levels
-        return random.randint(0, 2)
+        # return random.randint(0, 2)
+        print('return to lvl 0')
+        return int(0)
+        print('return to lvl random')
 
 
     def getAvatarCoordinates(self, state):
@@ -219,38 +223,61 @@ class Agent(AbstractPlayer):
         level = self.get_perception(lastState)
         col = currentPosition[0] # col
         row = currentPosition[1] # row
-        reward = 0
+        reward = 2.0*(self.getDistanceToGoal(lastState) - self.getDistanceToGoal(currentState))
 
         # VALIDAR QUE NO AtaQUE Y SI NO SE MUEVE TABLA
 
         if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
             print('KILLED AN ENEMY')
-            return 500.0
+            return 5000.0
 
         if level[col][row] == elementToFloat['A']:
             # Did not move
             # TODO add killed enemy reward
-            print ('AGENT DID NOT MOVE')
-            reward = -50.0
-            if self.lastAction and currentState.availableActions[self.lastAction] == 'ACTION_USE':
-                print('BUT DID ATTACK')
-                reward = -2.0
+            if self.lastAction is not None and currentState.availableActions[self.lastAction] == 'ACTION_USE':
+                # print('BUT DID ATTACK')
+                reward = -6.0
+            else:
+                print ('AGENT DID NOT MOVE')
+                reward -= 5.0
+        elif level[col][row] == elementToFloat['.']:
+            # Found key
+            print ('MOVED')
+            print (self.getDistanceToGoal(currentState))
         elif level[col][row] == elementToFloat['L']:
             # Found key
             print ('FOUND KEY')
             self.foundKey = True
-            reward = 1000.0
+            # Set GATE as new goal
+            self.goalPosition = sso.portalsPositions[0][0].getPositionAsArray()
+            reward = 10000.0
         elif level[col][row] == elementToFloat['S'] and self.foundKey:
             # Won
-            reward = 5000.0
+            print('WON')
+            reward = 50000.0
         else:
             print ('No entro a nignuno')
-            print level[col][row]
 
         # print 'level: '
         # print level[col][row]
-        # print reward
+        print reward
         return reward
+
+    def getDistanceToGoal(self, state):
+        # print('Getting distance to goal')
+        # print(self.getAvatarCoordinates(state))
+        # print(self.goalPosition)
+        return distance.cityblock(self.getAvatarCoordinates(state), self.goalPosition)
+
+    # def isCloserToKey(self, lastState, currentState):
+    #     closer = self.getDistanceToKey(currentState) < self.getDistanceToKey(lastState)
+    #     self.closerToKey = closer
+    #     return closer
+
+    # def isCloserToExit(self, lastState, currentState):
+    #     closer = self.getDistanceToExit(currentState) < self.getDistanceToExit(lastState)
+    #     self.closerToExit = closer
+    #     return closer
 
 
     def get_perception(self, sso):

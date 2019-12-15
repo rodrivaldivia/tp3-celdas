@@ -10,8 +10,8 @@ class ReplayMemory():
         return str(self.__class__) + ": " + str(self.__dict__)
 
     def pushExperience(self, experience):
-            # print(experience)
-            self.memory.append(experience)
+        # print(experience)
+        self.memory.append(experience)
 
     def sample(self, batchSize):
         if batchSize > len(self.memory):

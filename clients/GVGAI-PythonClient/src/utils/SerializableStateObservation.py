@@ -93,6 +93,9 @@ class Observation:
             self.reference = Vector2d(parse_Observation['reference'])
             self.sqDist = parse_Observation['sqDist']
 
+    def getPositionAsArray(self):
+        return [int(self.position.y/10), int(self.position.x/10)]
+
 class Vector2d:
     """
      * Serialized state observation, corresponding to the Java Client code:
