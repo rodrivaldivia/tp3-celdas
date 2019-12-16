@@ -1,4 +1,8 @@
 [GAME] Game idx:90 game name zelda
 [PHASE] Starting First Phase of Training in 3 levels.
-[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:1.0, timesteps:512
-[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:316
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:188
+[TRAINING] Result (1->win; 0->lose): level:1, Player0:0, Player0-Score:-1.0, timesteps:134
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:938
+[PHASE] Starting Second Phase of Training in 3 levels.
+[TRAINING] Result (1->win; 0->lose): level:2, Player0:0, Player0-Score:-1.0, timesteps:530
+[TRAINING] Result (1->win; 0->lose): level:0, Player0:0, Player0-Score:-1.0, timesteps:244
