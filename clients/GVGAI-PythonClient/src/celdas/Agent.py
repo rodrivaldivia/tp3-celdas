@@ -27,12 +27,12 @@ tf.compat.v1.enable_v2_behavior()
 # tf.reset_default_graph()
 
 
-MEMORY_CAPACITY = 1000
-TIMESTEPS_PER_EPISODE = 150
+MEMORY_CAPACITY = 30
+# TIMESTEPS_PER_EPISODE = 150
 STEPS_TO_UPDATE_NETWORK = 10
 NUM_ACTIONS = 5
-BATCH_SIZE = 50
-GAMMA = 0.9
+BATCH_SIZE = 5
+GAMMA = 0.8
 
 elementToFloat = {
     '.': 0.0,
@@ -72,13 +72,13 @@ class Agent(AbstractPlayer):
     * @param elapsedTimer Timer (1s)
     """
 
-    def init(self, sso, elapsedTimer):    
-        print(sso.availableActions)
+    def init(self, sso, elapsedTimer):   
         self.lastState = None
         self.lastAction = None
         self.timestep = 0
         self.align_target_model()
         self.foundKey = False
+        self.switchedDirection = False
         self.currentDirection = 'ACTION_DOWN'
         # Set KEY as goal
         # print(self.get_perception(sso))
@@ -95,8 +95,8 @@ class Agent(AbstractPlayer):
         inputs = Input(shape=(3, 3, 3), name='state')
         x = Flatten()(inputs)
         x = Dense(128, activation='relu')(x)
-        x = Dense(64, activation='softmax')(x)
-        outputs = Dense(NUM_ACTIONS, activation='linear')(x)
+        x = Dense(64, activation='relu')(x)
+        outputs = Dense(NUM_ACTIONS, activation='relu')(x)
 
         model = Model(inputs=inputs, outputs=outputs, name='Zelda')
 
@@ -108,9 +108,11 @@ class Agent(AbstractPlayer):
    
 
     def get_new_direction(self, action):
-        print(action)
-        print('ACTION_USE')
-        print(action == 'ACTION_USE')
+        # print('New action: ', action)
+        # print('Old action: ',self.currentDirection)
+        # print(action == 'ACTION_USE')
+        self.switchedDirection = action != self.currentDirection and action != 'ACTION_USE'
+        # print(self.switchedDirection)
         return self.currentDirection if action == 'ACTION_USE' else action 
 
     """
@@ -128,7 +130,7 @@ class Agent(AbstractPlayer):
 
         self.timestep += 1
         self.train()
-        if sso.gameTick % TIMESTEPS_PER_EPISODE == 0:    
+        if sso.gameTick % STEPS_TO_UPDATE_NETWORK == 0:    
             self.align_target_model()
 
 
@@ -140,7 +142,7 @@ class Agent(AbstractPlayer):
             self.replayMemory.pushExperience(Experience(self.lastState, self.lastAction, reward, sso))
         
         # pprint(vars(sso))
-        print(self.get_perception(sso))
+        # print(self.get_perception(sso))
 
         self.lastState = sso
 
@@ -152,10 +154,11 @@ class Agent(AbstractPlayer):
             # print('Using strategy...')
             q_values = self.policyNetwork.predict(tensorState)
             index = np.argmax(q_values[0])
-            print('q_values: ', q_values)
-            print('Predicted Best: ', sso.availableActions[index])
+            # print('q_values: ', q_values)
+            # print(sso.availableActions)
+            # print('Predicted Best: ', sso.availableActions[index])
             self.currentDirection = self.get_new_direction(sso.availableActions[index])
-            print('Current direction: ', self.currentDirection)
+            # print('Current direction: ', self.currentDirection)
             return sso.availableActions[np.argmax(q_values[0])]
         else:
             self.exploreNext = False
@@ -165,27 +168,24 @@ class Agent(AbstractPlayer):
             else:
                 index = random.randint(0, len(sso.availableActions) - 1)
                 self.lastAction = index
-                print('Exploring: ', sso.availableActions[index])
+                # print('Exploring: ', sso.availableActions[index])
                 self.currentDirection = self.get_new_direction(sso.availableActions[index])
-                print('Current direction: ', self.currentDirection)
+                # print('Current direction: ', self.currentDirection)
                 return sso.availableActions[index]
 
     def train(self):
         # if self.starting:
-        #     batch = self.replayMemory.sample(BATCH_SIZE)
-        #     if len(batch) < BATCH_SIZE:
-        #         return
+        batch = self.replayMemory.sample(BATCH_SIZE)
+        if len(batch) < BATCH_SIZE:
+            return
         # else:
-        batch = self.replayMemory.popExperience()
+        # batch = self.replayMemory.popExperience()
         
-        print('start training')
+        # print('start training')
 
         i = 0
 
         for experience in batch:
-            i+=1
-            if i%STEPS_TO_UPDATE_NETWORK == 0:
-                self.align_target_model()
 
             tensorState = tf.convert_to_tensor([self.get_perception(experience.state)])
             tensorNextState = tf.convert_to_tensor([self.get_perception(experience.nextState)])
@@ -206,18 +206,7 @@ class Agent(AbstractPlayer):
             # Entrenamos con la prediccion vs la correccion
             self.policyNetwork.fit(tensorState, target, epochs=1, verbose=0)
 
-        print('done training')
-
-
-        # flatStates = [self.get_perception(sample.state) for sample in batch]
-        # # print (flatStates)
-        # tensorStates = tf.convert_to_tensor(flatStates)
-        # # predict Q(s,a) given the batch of states
-        # predicted_q = self.policyNetwork(tensorStates)
-        # loss = self.policyNetwork.train_on_batch(tensorStates)
-        # target_q = predicted_q.numpy()
-        # # print target_q
-        # batch_idxs = np.arange(BATCH_SIZE) # [0, 1, ...BATCH_SIZE]
+        # print('done training')
 
 
     """
@@ -261,29 +250,29 @@ class Agent(AbstractPlayer):
         level = self.get_level_perception(lastState)
         col = currentPosition[0] # col
         row = currentPosition[1] # row
-        reward = 10.0*(self.getDistanceToGoal(self.getAvatarCoordinates(lastState)) - self.getDistanceToGoal(self.getAvatarCoordinates(currentState)))
+        deltaDistance = self.getDistanceToGoal(self.getAvatarCoordinates(lastState)) - self.getDistanceToGoal(self.getAvatarCoordinates(currentState))
+        reward = 10.0*(deltaDistance)
 
-        # VALIDAR QUE NO AtaQUE Y SI NO SE MUEVE TABLA
+        moved = deltaDistance != 0
 
         if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
             print('KILLED AN ENEMY')
             return 500.0
 
-        if level[col][row] == elementToFloat['A']:
+        if not moved:
             # Did not move
-            # TODO add killed enemy reward
+            print('DID NOT MOVE')
+            print(currentState.availableActions[self.lastAction])
             if self.lastAction is not None and currentState.availableActions[self.lastAction] == 'ACTION_USE':
-                # print('BUT DID ATTACK')
+                print('BUT DID ATTACK')
                 reward = -10.0
             else:
-                # self.exploreNext = True
-                # print(level)
-                # print ('AGENT DID NOT MOVE, EXPLORING...')
-                # print('Last accion: ', currentState.availableActions[self.lastAction])
-                # sleep(10)
-                # reward -= 3.5
-                                
-                pass
+                if(self.switchedDirection):
+                    print('SWITCHED DIRECTION')
+                    reward = 0.0
+                else:
+                    print ('STEPPED INTO WALL')
+                    reward = -50.0
         # elif level[col][row] == elementToFloat['.']:
             # print ('MOVED')
             # print (self.getDistanceToGoal(currentState))
