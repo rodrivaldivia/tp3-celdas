@@ -32,8 +32,7 @@ TIMESTEPS_PER_EPISODE = 150
 STEPS_TO_UPDATE_NETWORK = 10
 NUM_ACTIONS = 5
 BATCH_SIZE = 50
-GAMMA = 0.6
-TAU = 0.08
+GAMMA = 0.9
 
 elementToFloat = {
     '.': 0.0,
@@ -45,6 +44,12 @@ elementToFloat = {
     'x': 6.0,
 }
 
+directions = {
+    'ACTION_DOWN':  (1,2),
+    'ACTION_UP':    (1,0),
+    'ACTION_RIGHT': (2,1),
+    'ACTION_LEFT':  (0,1)
+}
 
 class Agent(AbstractPlayer):
     def __init__(self):
@@ -74,6 +79,7 @@ class Agent(AbstractPlayer):
         self.timestep = 0
         self.align_target_model()
         self.foundKey = False
+        self.currentDirection = 'ACTION_DOWN'
         # Set KEY as goal
         # print(self.get_perception(sso))
         self.goalPosition = None
@@ -86,7 +92,7 @@ class Agent(AbstractPlayer):
 
     def _build_compile_model(self):
         # inputs = Input(shape=(9,13), name='state')
-        inputs = Input(shape=(2, 3, 3), name='state')
+        inputs = Input(shape=(3, 3, 3), name='state')
         x = Flatten()(inputs)
         x = Dense(128, activation='relu')(x)
         x = Dense(64, activation='softmax')(x)
@@ -94,12 +100,18 @@ class Agent(AbstractPlayer):
 
         model = Model(inputs=inputs, outputs=outputs, name='Zelda')
 
-        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(learning_rate=0.05))
+        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(learning_rate=0.005))
         return model
 
     def align_target_model(self):
         self.targetNetwork.set_weights(self.policyNetwork.get_weights())
    
+
+    def get_new_direction(self, action):
+        print(action)
+        print('ACTION_USE')
+        print(action == 'ACTION_USE')
+        return self.currentDirection if action == 'ACTION_USE' else action 
 
     """
      * Method used to determine the next move to be performed by the agent.
@@ -115,9 +127,8 @@ class Agent(AbstractPlayer):
     def act(self, sso, elapsedTimer):
 
         self.timestep += 1
-
-        if sso.gameTick % TIMESTEPS_PER_EPISODE == 0:
-            self.train()
+        self.train()
+        if sso.gameTick % TIMESTEPS_PER_EPISODE == 0:    
             self.align_target_model()
 
 
@@ -140,8 +151,11 @@ class Agent(AbstractPlayer):
 
             # print('Using strategy...')
             q_values = self.policyNetwork.predict(tensorState)
+            index = np.argmax(q_values[0])
             print('q_values: ', q_values)
-            print('Predicted Best: ', sso.availableActions[np.argmax(q_values[0])])
+            print('Predicted Best: ', sso.availableActions[index])
+            self.currentDirection = self.get_new_direction(sso.availableActions[index])
+            print('Current direction: ', self.currentDirection)
             return sso.availableActions[np.argmax(q_values[0])]
         else:
             self.exploreNext = False
@@ -152,12 +166,17 @@ class Agent(AbstractPlayer):
                 index = random.randint(0, len(sso.availableActions) - 1)
                 self.lastAction = index
                 print('Exploring: ', sso.availableActions[index])
+                self.currentDirection = self.get_new_direction(sso.availableActions[index])
+                print('Current direction: ', self.currentDirection)
                 return sso.availableActions[index]
 
     def train(self):
-        batch = self.replayMemory.sample(BATCH_SIZE)
-        if len(batch) < BATCH_SIZE:
-            return        
+        # if self.starting:
+        #     batch = self.replayMemory.sample(BATCH_SIZE)
+        #     if len(batch) < BATCH_SIZE:
+        #         return
+        # else:
+        batch = self.replayMemory.popExperience()
         
         print('start training')
 
@@ -242,7 +261,7 @@ class Agent(AbstractPlayer):
         level = self.get_level_perception(lastState)
         col = currentPosition[0] # col
         row = currentPosition[1] # row
-        reward = 1.0 + 1.0*(self.getDistanceToGoal(self.getAvatarCoordinates(lastState)) - self.getDistanceToGoal(self.getAvatarCoordinates(currentState)))
+        reward = 10.0*(self.getDistanceToGoal(self.getAvatarCoordinates(lastState)) - self.getDistanceToGoal(self.getAvatarCoordinates(currentState)))
 
         # VALIDAR QUE NO AtaQUE Y SI NO SE MUEVE TABLA
 
@@ -255,7 +274,7 @@ class Agent(AbstractPlayer):
             # TODO add killed enemy reward
             if self.lastAction is not None and currentState.availableActions[self.lastAction] == 'ACTION_USE':
                 # print('BUT DID ATTACK')
-                reward = -1.0
+                reward = -10.0
             else:
                 # self.exploreNext = True
                 # print(level)
@@ -263,13 +282,14 @@ class Agent(AbstractPlayer):
                 # print('Last accion: ', currentState.availableActions[self.lastAction])
                 # sleep(10)
                 # reward -= 3.5
+                                
                 pass
         # elif level[col][row] == elementToFloat['.']:
             # print ('MOVED')
             # print (self.getDistanceToGoal(currentState))
         elif level[col][row] == elementToFloat['L']:
-            # Found key
             print ('FOUND KEY')
+            # Found key
             self.foundKey = True
             # Set GATE as new goal
             self.goalPosition = currentState.portalsPositions[0][0].getPositionAsArray()
@@ -330,9 +350,13 @@ class Agent(AbstractPlayer):
         avatarPosition = self.getAvatarCoordinates(sso)
         level = np.ndarray((3,3))
         distances = np.ndarray((3,3))
+        direction = np.ndarray((3,3))
 
         level[:] = 0.0
         distances[:] = 20
+        direction[:] = 0.0
+        direction[directions[self.currentDirection]] = 1.0
+
         # level[:] = '.'
         avatar_observation = Observation()
         for ii in range(3):                   
@@ -348,7 +372,7 @@ class Agent(AbstractPlayer):
                     if aux is None: continue
                     level[jj][ii] = elementToFloat[self.detectElement(aux)]
         # print(level)
-        return [level, distances]
+        return [level, distances, direction]
 
 
     def detectElement(self, o):

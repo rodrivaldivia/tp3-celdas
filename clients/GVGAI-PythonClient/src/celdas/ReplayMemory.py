@@ -13,6 +13,11 @@ class ReplayMemory():
         # print(experience)
         self.memory.append(experience)
 
+    def popExperience(self):
+        if (not len(self.memory)):
+            return []
+        return [self.memory.pop()]
+
     def sample(self, batchSize):
         if batchSize > len(self.memory):
             return random.sample(self.memory, len(self.memory))
