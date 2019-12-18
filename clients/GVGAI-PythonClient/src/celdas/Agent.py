@@ -27,11 +27,12 @@ tf.compat.v1.enable_v2_behavior()
 # tf.reset_default_graph()
 
 
-MEMORY_CAPACITY = 30
+MEMORY_CAPACITY = 1000
 # TIMESTEPS_PER_EPISODE = 150
-STEPS_TO_UPDATE_NETWORK = 10
+STEPS_TO_UPDATE_NETWORK = 3
+MIN_REPLAY_MEMORY_SIZE = 500
 NUM_ACTIONS = 5
-BATCH_SIZE = 5
+BATCH_SIZE = 20
 GAMMA = 0.8
 
 elementToFloat = {
@@ -94,13 +95,13 @@ class Agent(AbstractPlayer):
         # inputs = Input(shape=(9,13), name='state')
         inputs = Input(shape=(3, 3, 3), name='state')
         x = Flatten()(inputs)
-        x = Dense(128, activation='relu')(x)
+        x = Dense(30, activation='relu')(x)
         x = Dense(64, activation='relu')(x)
-        outputs = Dense(NUM_ACTIONS, activation='relu')(x)
+        outputs = Dense(NUM_ACTIONS, activation='softmax')(x)
 
         model = Model(inputs=inputs, outputs=outputs, name='Zelda')
 
-        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(learning_rate=0.005))
+        model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
         return model
 
     def align_target_model(self):
@@ -128,9 +129,11 @@ class Agent(AbstractPlayer):
 
     def act(self, sso, elapsedTimer):
 
-        self.timestep += 1
+        print(sso.gameTick)
+        # if(sso.gameTick%BATCH_SIZE==0):
+            # print('train')
         self.train()
-        if sso.gameTick % STEPS_TO_UPDATE_NETWORK == 0:    
+        if(sso.gameTick % STEPS_TO_UPDATE_NETWORK == 0):    
             self.align_target_model()
 
 
@@ -154,11 +157,11 @@ class Agent(AbstractPlayer):
             # print('Using strategy...')
             q_values = self.policyNetwork.predict(tensorState)
             index = np.argmax(q_values[0])
-            # print('q_values: ', q_values)
-            # print(sso.availableActions)
-            # print('Predicted Best: ', sso.availableActions[index])
+            print('q_values: ', q_values)
+            print(sso.availableActions)
+            print('Predicted Best: ', sso.availableActions[index])
             self.currentDirection = self.get_new_direction(sso.availableActions[index])
-            # print('Current direction: ', self.currentDirection)
+            print('Current direction: ', self.currentDirection)
             return sso.availableActions[np.argmax(q_values[0])]
         else:
             self.exploreNext = False
@@ -174,25 +177,26 @@ class Agent(AbstractPlayer):
                 return sso.availableActions[index]
 
     def train(self):
-        # if self.starting:
+        # print(self.replayMemory.numSamples)
+        if self.replayMemory.numSamples < MIN_REPLAY_MEMORY_SIZE:
+            return
         batch = self.replayMemory.sample(BATCH_SIZE)
         if len(batch) < BATCH_SIZE:
             return
-        # else:
-        # batch = self.replayMemory.popExperience()
         
-        # print('start training')
+        print('start training')
 
-        i = 0
+        # X = []
+        # y = []
 
         for experience in batch:
 
             tensorState = tf.convert_to_tensor([self.get_perception(experience.state)])
             tensorNextState = tf.convert_to_tensor([self.get_perception(experience.nextState)])
 
+            # print(self.get_perception(experience.state))
             # Intentamos predecir la mejor accion
             target = self.policyNetwork.predict(tensorState)
-
             t = self.targetNetwork.predict(tensorNextState)
             # Para la accion que hicimos corregimos el Q-Value
             # print('Policy prediction: ', target)
@@ -204,9 +208,11 @@ class Agent(AbstractPlayer):
             # print('Q value after: ', target[0][experience.action])
 
             # Entrenamos con la prediccion vs la correccion
-            self.policyNetwork.fit(tensorState, target, epochs=1, verbose=0)
-
-        # print('done training')
+            X.append(tensorState)
+            # y.append(target)
+            self.policyNetwork.fit(tensorState, target, verbose=0)
+        # self.policyNetwork.train_on_batch(X,y)
+        print('done training')
 
 
     """
@@ -246,6 +252,11 @@ class Agent(AbstractPlayer):
         position = state.avatarPosition
         return [int(position[1]/10), int(position[0]/10)]
 
+    # Fails when level turns all 0 but the attack
+    def getNumberOfEnemies(self, state):
+        # return np.count_nonzero(y == self.get_level_perception(state))
+        return (self.get_level_perception(state) == 5.0).sum()
+
     def getReward(self, lastState, currentState, currentPosition):
         level = self.get_level_perception(lastState)
         col = currentPosition[0] # col
@@ -255,23 +266,26 @@ class Agent(AbstractPlayer):
 
         moved = deltaDistance != 0
 
+        # print(currentState.NPCPositionsNum)
+        # print(self.getNumberOfEnemies(currentState))
+
+        # if self.getNumberOfEnemies(currentState) < self.getNumberOfEnemies(lastState):
         if currentState.NPCPositionsNum < lastState.NPCPositionsNum:
-            print('KILLED AN ENEMY')
+            print('KILLED ALL ENEMIES')
             return 500.0
 
         if not moved:
-            # Did not move
-            print('DID NOT MOVE')
-            print(currentState.availableActions[self.lastAction])
-            if self.lastAction is not None and currentState.availableActions[self.lastAction] == 'ACTION_USE':
-                print('BUT DID ATTACK')
+            # print('DID NOT MOVE')
+            # print(currentState.availableActions[self.lastAction])
+            if 0 < self.lastAction < NUM_ACTIONS and currentState.availableActions[self.lastAction] == 'ACTION_USE':
+                # print('BUT DID ATTACK')
                 reward = -10.0
             else:
                 if(self.switchedDirection):
-                    print('SWITCHED DIRECTION')
+                    # print('SWITCHED DIRECTION')
                     reward = 0.0
                 else:
-                    print ('STEPPED INTO WALL')
+                    # print ('STEPPED INTO WALL')
                     reward = -50.0
         # elif level[col][row] == elementToFloat['.']:
             # print ('MOVED')
